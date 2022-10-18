@@ -7,5 +7,23 @@ name = "client"
 version = "0.1.0"
 
 [[package]]
+name = "galactic_client"
+version = "0.1.0"
+dependencies = [
+ "packet",
+]
+
+[[package]]
+name = "galactic_server"
+version = "0.1.0"
+dependencies = [
+ "packet",
+]
+
+[[package]]
+name = "packet"
+version = "0.1.0"
+
+[[package]]
 name = "server"
 version = "0.1.0"
