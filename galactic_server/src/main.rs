@@ -11,11 +11,6 @@ fn main() {
         x: 5.25,
         y: -3.3,
     };
-    
-    let gameplay = GamePlayPacket {
-        in_type: InTypes::DOWN,
-        point: position
-    };
 
     let player_spawn = SpawnPlayerPacket {
         in_type: InTypes::RIGHT,
@@ -45,12 +40,6 @@ fn main() {
             packet_data: Data::spawn_Laser{ packet: spawn_laser_packet },
         };
         packet1_to_send.to_buffer(&mut buffer);
-
-        let packet2_to_send = Packet{
-            packet_type: PacketType::GAMEPLAY,
-            packet_data: Data::game_play{ packet: gameplay }
-        };
-        packet2_to_send.to_buffer(&mut buffer);
 
         let packet3_to_send = Packet{
             packet_type: PacketType::SPAWN_PLAYER,

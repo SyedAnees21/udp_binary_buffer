@@ -40,11 +40,13 @@ pub struct Point2D {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone)]
 pub enum Data{
-    disconnect{packet: DisconnectPacket},
-    spawn_Laser{packet: SpawnLaserPacket},
-    game_play{packet: GamePlayPacket},
-    spawn_player{packet: SpawnPlayerPacket},
-    Init_Connect{packet: InitConnectPacket},
+    disconnect   {packet: DisconnectPacket},
+    spawn_Laser  {packet: SpawnLaserPacket},
+    spawn_player {packet: SpawnPlayerPacket},
+    Init_Connect {packet: InitConnectPacket},
+    movement     {packet: MovementPacket},
+    rotate       {packet: RotatePacket},
+    fire         {packet: FirePacket},
 }
 
 #[allow(non_camel_case_types)]
@@ -52,9 +54,11 @@ pub enum Data{
 pub enum PacketType {   // packets ids
     DISCONNECT =1,
     SPAWN_LASER,
-    GAMEPLAY,
     SPAWN_PLAYER,
     INIT_CONNECT,
+    MOVEMENT,
+    ROTATE,
+    FIRE
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -121,14 +125,40 @@ impl ReadWrite for SpawnLaserPacket {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct GamePlayPacket{
-    pub in_type: InTypes,
-    pub point: Point2D,
+pub struct MovementPacket {
+    pub in_type: InTypes
 }
 
-impl ReadWrite for GamePlayPacket {
+impl ReadWrite for MovementPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::GAMEPLAY as u8);
+        buffer.write_bytes(PacketType::MOVEMENT as u8);
+        buffer.write_bytes(self.in_type as u8)
+    }
+
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let intype = match buffer.read_bytes(){
+            2 => {InTypes::UP},
+            3 => {InTypes::DOWN},
+            4 => {InTypes::LEFT},
+            5 => {InTypes::RIGHT},
+            _ => {panic!("Expected keyboard Input, invalid input received")}
+        };
+        let pack = MovementPacket { in_type: intype };
+
+        let data = Data::movement { packet: pack };
+        data
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct RotatePacket{
+    pub in_type: InTypes,
+    pub point: Point2D
+}
+
+impl ReadWrite for RotatePacket {
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::ROTATE as u8);
         buffer.write_bytes(self.in_type as u8);
 
         let mut bytes = self.point.x.to_le_bytes();
@@ -145,17 +175,11 @@ impl ReadWrite for GamePlayPacket {
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let in_type = match buffer.read_bytes() {
+        let intype = match buffer.read_bytes(){
             0 => {InTypes::LEFT_CLICK},
-            1 => {InTypes::RIGHT_CLICK},
-            2 => {InTypes::UP},
-            3 => {InTypes::DOWN},
-            4 => {InTypes::LEFT},
-            5 => {InTypes::RIGHT},
-            6 => {InTypes::DISCONNECT},
-            _ => {panic!("Invalid input type")}
+            _ => {panic!("Invalid input received, expected mouse left click")}
         };
-
+        
         let mut bytes: [u8;4] = [0;4];
         for i in 0..4 {
             bytes[i] = buffer.read_bytes();
@@ -167,19 +191,38 @@ impl ReadWrite for GamePlayPacket {
         }
         let y = f32::from_le_bytes(bytes);
 
-        let pack = GamePlayPacket{
-            in_type,
+        let pack = RotatePacket{
+            in_type: intype,
             point: Point2D { x, y, }
         };
 
-        // let data = Data {game_play: pack};
-        let data = Data::game_play{ packet: pack };
-
+        let data = Data::rotate{ packet: pack };
         data
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct FirePacket {
+    pub in_type: InTypes
+}
 
+impl ReadWrite for FirePacket {
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::FIRE as u8);
+        buffer.write_bytes(self.in_type as u8)
+    }
+
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let intype = match buffer.read_bytes(){
+            1 => {InTypes::RIGHT_CLICK},
+            _ => {panic!("Invalid input received, expected Mouse Right Click")}
+        };
+        let pack = FirePacket { in_type: intype };
+
+        let data = Data::fire{ packet: pack };
+        data
+    }
+}
 #[derive(Debug, Clone)]
 pub struct SpawnPlayerPacket{
     pub in_type: InTypes,
@@ -450,38 +493,39 @@ impl Packet {
     pub fn to_buffer(self, buffer: &mut Buffer) {
         match self.packet_type {
             PacketType::DISCONNECT => {
-                {
-                    if let Data::disconnect { packet }= self.packet_data{
-                        packet.write_to_buffer(buffer)
-                    }
+                
+                if let Data::disconnect { packet }= self.packet_data{
+                    packet.write_to_buffer(buffer)
                 }
             },
             PacketType::SPAWN_LASER => {
-                {
-                    if let Data::spawn_Laser { packet } = self.packet_data {
-                        packet.write_to_buffer(buffer)
-                    }
-                }
-            },
-            PacketType::GAMEPLAY => {
-                {
-                    if let Data::game_play { packet } = self.packet_data {
-                        packet.write_to_buffer(buffer)
-                    }
+                if let Data::spawn_Laser { packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
                 }
             },
             PacketType::SPAWN_PLAYER => {
-                {
-                    if let Data::spawn_player { packet } = self.packet_data {
-                        packet.write_to_buffer(buffer)
-                    }
+                if let Data::spawn_player { packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
                 }
             },
             PacketType::INIT_CONNECT => {
-                {
-                    if let Data::Init_Connect { packet } = self.packet_data {
-                        packet.write_to_buffer(buffer)
-                    }
+                if let Data::Init_Connect { packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::MOVEMENT => {
+                if let Data::movement{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::ROTATE => {
+                if let Data::rotate{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::FIRE => {
+                if let Data::fire{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
                 }
             },
         }
@@ -507,22 +551,36 @@ impl Packet {
             }
             3 => {
                 let pack = Packet {
-                    packet_type: PacketType::GAMEPLAY,
-                    packet_data: GamePlayPacket::read_from_buffer(buffer)
-                };
-                Some(pack)
-            }
-            4 => {
-                let pack = Packet {
                     packet_type: PacketType::SPAWN_PLAYER,
                     packet_data: SpawnPlayerPacket::read_from_buffer(buffer)
                 };
                 Some(pack)
             }
-            5 => {
+            4 => {
                 let pack = Packet {
                     packet_type: PacketType::INIT_CONNECT,
                     packet_data: InitConnectPacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            5 => {
+                let pack = Packet {
+                    packet_type: PacketType::MOVEMENT,
+                    packet_data: MovementPacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            6 => {
+                let pack = Packet {
+                    packet_type: PacketType::ROTATE,
+                    packet_data: RotatePacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            7 => {
+                let pack = Packet {
+                    packet_type: PacketType::FIRE,
+                    packet_data: FirePacket::read_from_buffer(buffer)
                 };
                 Some(pack)
             }
