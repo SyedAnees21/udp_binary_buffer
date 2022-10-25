@@ -25,5 +25,12 @@ name = "packet"
 version = "0.1.0"
 
 [[package]]
+name = "packet_test"
+version = "0.1.0"
+dependencies = [
+ "packet",
+]
+
+[[package]]
 name = "server"
 version = "0.1.0"

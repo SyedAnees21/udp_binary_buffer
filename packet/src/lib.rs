@@ -13,14 +13,14 @@ pub trait ReadWrite {
     } 
 }
 
-#[derive(Debug, Clone, Default, Copy)]
+#[derive(Debug, Clone, Default, Copy, PartialEq)]
 pub struct Dashboardinfo {
     pub score: f32,
     pub health: f32,
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum InTypes {
     LEFT_CLICK,
     RIGHT_CLICK,
@@ -31,7 +31,7 @@ pub enum InTypes {
     DISCONNECT,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Point2D {
     pub x: f32,
     pub y: f32,
@@ -40,13 +40,17 @@ pub struct Point2D {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone)]
 pub enum Data{
-    disconnect   {packet: DisconnectPacket},
-    spawn_Laser  {packet: SpawnLaserPacket},
-    spawn_player {packet: SpawnPlayerPacket},
-    Init_Connect {packet: InitConnectPacket},
-    movement     {packet: MovementPacket},
-    rotate       {packet: RotatePacket},
-    fire         {packet: FirePacket},
+    disconnect    {packet: DisconnectPacket},
+    spawn_Laser   {packet: SpawnLaserPacket},
+    spawn_player  {packet: SpawnPlayerPacket},
+    Init_Connect  {packet: InitConnectPacket},
+    movement      {packet: MovementPacket},
+    rotate        {packet: RotatePacket},
+    fire          {packet: FirePacket},
+    dashboard     {packet: DashboardinfoPacket},
+    playerstate   {packet: PlayerStatePacket},
+    laserpoints   {packet: LaserPointsPacket},
+    playerinfo    {packet: PlayerInfoPacket},
 }
 
 #[allow(non_camel_case_types)]
@@ -58,7 +62,11 @@ pub enum PacketType {   // packets ids
     INIT_CONNECT,
     MOVEMENT,
     ROTATE,
-    FIRE
+    FIRE,
+    DASHBOARD,
+    PLAYERSTATE,
+    LASER_POINTS,
+    PlayerInfo
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -124,7 +132,7 @@ impl ReadWrite for SpawnLaserPacket {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MovementPacket {
     pub in_type: InTypes
 }
@@ -150,7 +158,7 @@ impl ReadWrite for MovementPacket {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RotatePacket{
     pub in_type: InTypes,
     pub point: Point2D
@@ -201,7 +209,7 @@ impl ReadWrite for RotatePacket {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FirePacket {
     pub in_type: InTypes
 }
@@ -223,6 +231,7 @@ impl ReadWrite for FirePacket {
         data
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct SpawnPlayerPacket{
     pub in_type: InTypes,
@@ -407,6 +416,222 @@ impl ReadWrite for InitConnectPacket{
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DashboardinfoPacket {
+    pub dashboard_info: Dashboardinfo
+}
+
+impl ReadWrite for DashboardinfoPacket {
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::DASHBOARD as u8);
+        
+        let mut bytes;
+        bytes =  self.dashboard_info.health.to_le_bytes();
+        
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.dashboard_info.score.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+    }
+
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let mut bytes= [0;4];
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let h = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let s = f32::from_le_bytes(bytes);
+
+        let pack = DashboardinfoPacket{dashboard_info: Dashboardinfo { score: s, health: h } };
+
+        let data = Data::dashboard{ packet: pack };
+        data
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlayerStatePacket {
+    pub id: i32,
+    pub position: Point2D, //TODO: later we have to use Vec2 in galactic fighters
+    pub angle: f32
+}
+
+impl ReadWrite for PlayerStatePacket {
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::PLAYERSTATE as u8);
+        
+        let mut bytes;
+
+        bytes =  self.id.to_le_bytes();
+        
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.position.x.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.position.y.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.angle.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+    }
+
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let mut bytes= [0;4];
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let player_id = i32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let x = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let y = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let angle = f32::from_le_bytes(bytes);
+
+        let pack = PlayerStatePacket { id: player_id, position: Point2D { x, y }, angle};
+
+        let data = Data::playerstate{ packet: pack };
+        data
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LaserPointsPacket {
+    pub point1: Point2D,
+    pub point2: Point2D,
+    pub id: usize
+}
+
+impl ReadWrite for LaserPointsPacket {
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::LASER_POINTS as u8);
+        
+        let mut bytes;
+
+        bytes =  self.point1.x.to_le_bytes();
+        
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.point1.y.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.point2.x.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        bytes =  self.point2.y.to_le_bytes();
+        for byte in bytes.iter() {
+            buffer.write_bytes(*byte);
+        }
+
+        buffer.write_bytes(self.id as u8);
+    }
+
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let mut bytes= [0;4];
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let x1 = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let y1 = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let x2 = f32::from_le_bytes(bytes);
+
+        for i in 0..4 {
+            bytes[i] = buffer.read_bytes();
+        }
+        let y2 = f32::from_le_bytes(bytes);
+
+        let id = buffer.read_bytes() as usize;
+
+        let pack = LaserPointsPacket{
+                point1: Point2D { x: x1, y: y1 },
+                point2: Point2D { x: x2, y: y2 },
+                id,
+            };
+
+        let data = Data::laserpoints{ packet: pack };
+        data
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PlayerInfoPacket {
+    pub name: String,
+    pub fighter: usize,
+}
+
+impl ReadWrite for PlayerInfoPacket{
+    fn write_to_buffer(&self, buffer: &mut Buffer) {
+        buffer.write_bytes(PacketType::PlayerInfo as u8);
+        let bytes = self.name.as_bytes();
+        
+        let str_bytes_len = bytes.len()  as u8;
+        buffer.write_bytes(str_bytes_len);
+
+        for byte in bytes.iter(){
+            buffer.write_bytes(*byte);
+        }
+        
+        buffer.write_bytes(self.fighter as u8);
+    }
+        
+    fn read_from_buffer( buffer: &mut Buffer)-> Data {
+        let str_len_byte = buffer.read_bytes();
+
+        let (slice, range) = buffer.get_slice_range(str_len_byte);
+        let playername = String::from_utf8_lossy(&slice[0..range]);
+
+        let fighter_type = buffer.read_bytes() as usize;
+
+        let pack = PlayerInfoPacket { name: playername.to_string() , fighter: fighter_type };
+
+        let data = Data::playerinfo{ packet: pack };
+        data
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Buffer {
     pub data: [u8;MAX_BUFFER_SIZE],
@@ -493,7 +718,6 @@ impl Packet {
     pub fn to_buffer(self, buffer: &mut Buffer) {
         match self.packet_type {
             PacketType::DISCONNECT => {
-                
                 if let Data::disconnect { packet }= self.packet_data{
                     packet.write_to_buffer(buffer)
                 }
@@ -525,6 +749,26 @@ impl Packet {
             },
             PacketType::FIRE => {
                 if let Data::fire{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::DASHBOARD => {
+                if let Data::dashboard{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::PLAYERSTATE => {
+                if let Data::playerstate{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::LASER_POINTS => {
+                if let Data::laserpoints{ packet } = self.packet_data {
+                    packet.write_to_buffer(buffer)
+                }
+            },
+            PacketType::PlayerInfo => {
+                if let Data::playerinfo{ packet } = self.packet_data {
                     packet.write_to_buffer(buffer)
                 }
             },
@@ -581,6 +825,34 @@ impl Packet {
                 let pack = Packet {
                     packet_type: PacketType::FIRE,
                     packet_data: FirePacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            8 => {
+                let pack = Packet {
+                    packet_type: PacketType::DASHBOARD,
+                    packet_data: DashboardinfoPacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            9 => {
+                let pack = Packet {
+                    packet_type: PacketType::PLAYERSTATE,
+                    packet_data: PlayerStatePacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            10 => {
+                let pack = Packet {
+                    packet_type: PacketType::LASER_POINTS,
+                    packet_data: LaserPointsPacket::read_from_buffer(buffer)
+                };
+                Some(pack)
+            }
+            11 => {
+                let pack = Packet {
+                    packet_type: PacketType::PlayerInfo,
+                    packet_data: PlayerInfoPacket::read_from_buffer(buffer)
                 };
                 Some(pack)
             }
