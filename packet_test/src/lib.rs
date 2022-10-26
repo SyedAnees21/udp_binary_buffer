@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use packet::*;
 
     #[test]
@@ -113,13 +115,30 @@ mod tests {
     #[test]
     fn playerstate_packet_test() {
         let mut buffer = Buffer::new();
+        let mut p_state_vec = Vec::new();
+        
+        let mut id = 1;
+        let mut position= Point2D { x: 600., y: 975.5 };
+        let mut angle= 27.6;
+        
+        for _ in 0..5 {
+            let pstate= PlayerState {
+                id,
+                position,
+                angle
+            };
+            p_state_vec.push(pstate);
 
-        let pack = PlayerStatePacket{
-            id: 1,
-            position: Point2D { x: 600., y: 975.5 },
-            angle: 27.6
+            id += 1;
+            position.x += 1.;
+            position.y += 1.;
+            angle += 1.;
+
+        }
+        let pack = PlayerStatePacket {
+            player_states: p_state_vec
         };
-
+        
         let packet_to_send = Packet{
             packet_type: PacketType::PLAYERSTATE,
             packet_data: Data::playerstate{ packet: pack.clone() }
@@ -143,11 +162,28 @@ mod tests {
     fn laserpoints_packet_test() {
         let mut buffer = Buffer::new();
 
-        let pack = LaserPointsPacket{
-            id: 1,
-            point1: Point2D { x: 600., y: 975.5 },
-            point2:Point2D { x: 1200., y: 1155.6 }
-        };
+        let mut point = Point2D {x:2.25, y:35.6};
+        let mut dir = Point2D {x: -36., y:-45.5};
+        let mut id = 0 as usize;
+
+        let mut laser_points_vec = Vec::new();
+
+        for _ in 0..10 {
+            let laser_points = LaserPoints {
+                point,
+                dir,
+                id
+            };
+
+            laser_points_vec.push(laser_points);
+            point.x += 1.;
+            point.y += 1.;
+            dir.x += 1.;
+            dir.y += 1.;
+            id += 1;
+        }
+
+        let pack = LaserPointsPacket { laser_points: laser_points_vec };
 
         let packet_to_send = Packet{
             packet_type: PacketType::LASER_POINTS,
@@ -170,10 +206,22 @@ mod tests {
     #[test]
     fn playerinfo_packet_test() {
         let mut buffer = Buffer::new();
+        let mut info_map = HashMap::new();
+
+        let playerinfo1 = PlayerInfo {
+            name: "Anees".to_string(),
+            fighter: 2
+        };
+        info_map.insert(0, playerinfo1);
+
+        let playerinfo2 = PlayerInfo {
+            name: "Akaam".to_string(),
+            fighter: 1
+        };
+        info_map.insert(1, playerinfo2);
 
         let pack = PlayerInfoPacket{
-            name: "Anees".to_string(),
-            fighter: 4
+            player_info_map: info_map
         };
 
         let packet_to_send = Packet{
