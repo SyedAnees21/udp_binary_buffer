@@ -80,7 +80,6 @@ impl ReadWrite for DisconnectPacket {
     fn read_from_buffer( _buffer: &mut Buffer)-> Data {
         let pack = DisconnectPacket;
 
-        // let data = Data{disconnect: pack};
         let data = Data::disconnect{ packet:pack };
         data
     }
@@ -127,7 +126,6 @@ impl ReadWrite for SpawnLaserPacket {
         };
 
         let data = Data::spawn_Laser{ packet: pack };
-        // let data = Data {spawn_laser: pack};
         data
     }
 }
