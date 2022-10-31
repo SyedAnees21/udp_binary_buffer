@@ -4,6 +4,9 @@ use std::{ptr, collections::HashMap};
 pub const MAX_ELEMENTS: usize = 50;
 pub const MAX_BUFFER_SIZE: usize = 1200;
 
+pub const F32_SIZE: usize = 4;
+pub const I32_SIZE: usize = 4;
+
 pub trait ReadWrite {
     fn write_to_buffer(&self, _buffer: &mut Buffer){}
 
@@ -115,36 +118,17 @@ pub struct SpawnLaserPacket{
 impl ReadWrite for SpawnLaserPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
         buffer.write_bytes(PacketType::SPAWN_LASER as u8);
-
-        let mut bytes = self.point.x.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-        
-        bytes = self.point.y.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_f32(self.point.x);
+        buffer.write_f32(self.point.y);
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let mut bytes: [u8;4] = [0;4];
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let x = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let y = f32::from_le_bytes(bytes);
+        let x = buffer.read_f32();
+        let y = buffer.read_f32();
 
         let pack = SpawnLaserPacket{
             point: Point2D { x, y, }
         };
-
         let data = Data::spawn_Laser{ packet: pack };
         data
     }
@@ -186,18 +170,8 @@ impl ReadWrite for RotatePacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
         buffer.write_bytes(PacketType::ROTATE as u8);
         buffer.write_bytes(self.in_type as u8);
-
-        let mut bytes = self.point.x.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-        
-        bytes = self.point.y.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_f32(self.point.x);
+        buffer.write_f32(self.point.y);
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
@@ -206,22 +180,13 @@ impl ReadWrite for RotatePacket {
             _ => {panic!("Invalid input received, expected mouse left click")}
         };
         
-        let mut bytes: [u8;4] = [0;4];
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let x = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let y = f32::from_le_bytes(bytes);
+        let x = buffer.read_f32();
+        let y = buffer.read_f32();
 
         let pack = RotatePacket{
             in_type: intype,
             point: Point2D { x, y, }
         };
-
         let data = Data::rotate{ packet: pack };
         data
     }
@@ -262,29 +227,10 @@ impl ReadWrite for SpawnPlayerPacket{
     fn write_to_buffer(&self, buffer: &mut Buffer) {
         buffer.write_bytes(PacketType::SPAWN_PLAYER as u8);
         buffer.write_bytes(self.in_type as u8);
-
-        let mut bytes = self.point.x.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-        
-        bytes = self.point.y.to_le_bytes();
-
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-     
+        buffer.write_f32(self.point.x);
+        buffer.write_f32(self.point.y);
         buffer.write_bytes(self.fighter_type as u8);
-        
-        let bytes = self.player_name.as_bytes();
-        let str_bytes_len = bytes.len()  as u8;
-
-        buffer.write_bytes(str_bytes_len);
-
-        for byte in bytes.iter(){
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_string(self.player_name.to_owned());
     }
         
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
@@ -299,23 +245,10 @@ impl ReadWrite for SpawnPlayerPacket{
             _ => {panic!("Invalid input type")}
         };
 
-        let mut bytes: [u8;4] = [0;4];
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let x = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let y = f32::from_le_bytes(bytes);
-
+        let x = buffer.read_f32();
+        let y = buffer.read_f32();
         let fightertype = buffer.read_bytes() as usize;
-
-        let str_len_byte = buffer.read_bytes();
-
-        let (slice, range) = buffer.get_slice_range(str_len_byte);
-        let playername = String::from_utf8_lossy(&slice[0..range]);
+        let playername = buffer.read_string();
         
         let pack = SpawnPlayerPacket{
             in_type,
@@ -323,7 +256,6 @@ impl ReadWrite for SpawnPlayerPacket{
             player_name: playername.to_string(),
             fighter_type: fightertype
         };
-
         let data = Data::spawn_player{ packet: pack };
         data
     }
@@ -342,14 +274,7 @@ pub struct InitConnectPacket{
 impl ReadWrite for InitConnectPacket{
     fn write_to_buffer(&self, buffer: &mut Buffer) {
         buffer.write_bytes(PacketType::INIT_CONNECT as u8);
-        let bytes = self.name.as_bytes();
-        
-        let str_bytes_len = bytes.len()  as u8;
-        buffer.write_bytes(str_bytes_len);
-
-        for byte in bytes.iter(){
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_string(self.name.to_owned());
         buffer.write_bytes(self.unique_index as u8);
 
         let vec_bytes_len = self.other_players_indices.len() as u8;
@@ -360,64 +285,27 @@ impl ReadWrite for InitConnectPacket{
         }
 
         buffer.write_bytes(self.no_players as u8);
-
-        let mut bytes = self.arena_dim.x.to_le_bytes();
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-        
-        bytes = self.arena_dim.y.to_le_bytes();
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-
-        bytes =  self.dashboard_info.health.to_le_bytes();
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-
-        bytes =  self.dashboard_info.score.to_le_bytes();
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_f32(self.arena_dim.x);
+        buffer.write_f32(self.arena_dim.y);
+        buffer.write_f32(self.dashboard_info.health);
+        buffer.write_f32(self.dashboard_info.score);
     }
         
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let str_len_byte = buffer.read_bytes();
 
-        let (slice, range) = buffer.get_slice_range(str_len_byte);
-        let playername = String::from_utf8_lossy(&slice[0..range]);
-
+        let playername = buffer.read_string();
         let uniq_index = buffer.read_bytes() as usize;
-
         let vec_len = buffer.read_bytes();
         let other_indices = buffer.get_vec(vec_len);
-
         let num_of_players = buffer.read_bytes() as usize;
-
-        let mut bytes: [u8;4] = [0;4];
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let x = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let y = f32::from_le_bytes(bytes);
-
+        
+        let x = buffer.read_f32();
+        let y = buffer.read_f32();
         let arena_dimension = Point2D {x, y};
 
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let h = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let s = f32::from_le_bytes(bytes);
         
+        let h = buffer.read_f32();
+        let s = buffer.read_f32();
         let dash_info = Dashboardinfo {health: h, score: s};
 
         let pack = InitConnectPacket{
@@ -428,7 +316,6 @@ impl ReadWrite for InitConnectPacket{
             arena_dim: arena_dimension,
             dashboard_info: dash_info
         };
-
         let data = Data::Init_Connect{ packet: pack };
         data
     }
@@ -442,35 +329,16 @@ pub struct DashboardinfoPacket {
 impl ReadWrite for DashboardinfoPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
         buffer.write_bytes(PacketType::DASHBOARD as u8);
-        
-        let mut bytes;
-        bytes =  self.dashboard_info.health.to_le_bytes();
-        
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
-
-        bytes =  self.dashboard_info.score.to_le_bytes();
-        for byte in bytes.iter() {
-            buffer.write_bytes(*byte);
-        }
+        buffer.write_f32(self.dashboard_info.health);
+        buffer.write_f32(self.dashboard_info.score);
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let mut bytes= [0;4];
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let h = f32::from_le_bytes(bytes);
-
-        for i in 0..4 {
-            bytes[i] = buffer.read_bytes();
-        }
-        let s = f32::from_le_bytes(bytes);
+        
+        let h = buffer.read_f32();
+        let s = buffer.read_f32();
 
         let pack = DashboardinfoPacket{dashboard_info: Dashboardinfo { score: s, health: h } };
-
         let data = Data::dashboard{ packet: pack };
         data
     }
@@ -488,29 +356,11 @@ impl ReadWrite for PlayerStatePacket {
         let vec_len = self.player_states.len() as u8;
         buffer.write_bytes(vec_len);
 
-        let mut bytes;
-
         for player_state in self.player_states.iter() {
-            bytes =  player_state.id.to_le_bytes();
-            
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  player_state.position.x.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  player_state.position.y.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  player_state.angle.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
+            buffer.write_i32(player_state.id);
+            buffer.write_f32(player_state.position.x);
+            buffer.write_f32(player_state.position.y);
+            buffer.write_f32(player_state.angle);
         }
         
     }
@@ -519,28 +369,11 @@ impl ReadWrite for PlayerStatePacket {
         let vec_len = buffer.read_bytes() as usize;
         let mut players_state_vec = Vec::new();
 
-        let mut bytes= [0;4];
-
         for _ in 0.. vec_len {
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let player_id = i32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let x = f32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let y = f32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let angle = f32::from_le_bytes(bytes);
+            let player_id = buffer.read_i32();
+            let x = buffer.read_f32();
+            let y = buffer.read_f32();
+            let angle = buffer.read_f32();
 
             let player_state = PlayerState {
                 id: player_id,
@@ -549,10 +382,8 @@ impl ReadWrite for PlayerStatePacket {
             };
             players_state_vec.push(player_state);
         }
-        
 
         let pack = PlayerStatePacket { player_states: players_state_vec};
-
         let data = Data::playerstate{ packet: pack };
         data
     }
@@ -570,30 +401,11 @@ impl ReadWrite for LaserPointsPacket {
         let vec_len = self.laser_points.len() as u8;
         buffer.write_bytes(vec_len); 
 
-        let mut bytes;
-
         for l_points in self.laser_points.iter() {
-            bytes =  l_points.point.x.to_le_bytes();
-        
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  l_points.point.y.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  l_points.dir.x.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
-            bytes =  l_points.dir.y.to_le_bytes();
-            for byte in bytes.iter() {
-                buffer.write_bytes(*byte);
-            }
-
+            buffer.write_f32(l_points.point.x);
+            buffer.write_f32(l_points.point.y);
+            buffer.write_f32(l_points.dir.x);
+            buffer.write_f32(l_points.dir.y);
             buffer.write_bytes(l_points.id as u8);
         }
     }
@@ -602,30 +414,13 @@ impl ReadWrite for LaserPointsPacket {
         let vec_len = buffer.read_bytes() as usize;
         let mut vec = Vec::new();
 
-        let mut bytes= [0;4];
 
         for _ in 0..vec_len {
 
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let x1 = f32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let y1 = f32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let x2 = f32::from_le_bytes(bytes);
-    
-            for i in 0..4 {
-                bytes[i] = buffer.read_bytes();
-            }
-            let y2 = f32::from_le_bytes(bytes);
-    
+            let x1 = buffer.read_f32();
+            let y1 = buffer.read_f32();
+            let x2 = buffer.read_f32();
+            let y2 = buffer.read_f32();
             let id = buffer.read_bytes() as usize;
 
             let l_points = LaserPoints {
@@ -639,7 +434,6 @@ impl ReadWrite for LaserPointsPacket {
         let pack = LaserPointsPacket{
                 laser_points: vec
             };
-
         let data = Data::laserpoints{ packet: pack };
         data
     }
@@ -658,19 +452,8 @@ impl ReadWrite for PlayerInfoPacket{
         buffer.write_bytes(map_len);
 
         for player_info in self.player_info_map.iter() {
-
             buffer.write_bytes(*player_info.0 as u8);
-
-            let bytes = player_info.1.name.as_bytes();
-            
-            let str_bytes_len = bytes.len()  as u8;
-
-            buffer.write_bytes(str_bytes_len);
-
-            for byte in bytes.iter(){
-                buffer.write_bytes(*byte);
-            }
-            
+            buffer.write_string(player_info.1.name.to_owned());        
             buffer.write_bytes(player_info.1.fighter as u8);
         }
     }
@@ -682,11 +465,7 @@ impl ReadWrite for PlayerInfoPacket{
 
         for _ in 0..map_len {
             let key = buffer.read_bytes() as usize;
-            let str_len_byte = buffer.read_bytes();
-
-            let (slice, range) = buffer.get_slice_range(str_len_byte);
-            let playername = String::from_utf8_lossy(&slice[0..range]);
-
+            let playername = buffer.read_string();
             let fighter_type = buffer.read_bytes() as usize;
 
             let player_info = PlayerInfo { name: playername.to_string() , fighter: fighter_type };
@@ -694,7 +473,6 @@ impl ReadWrite for PlayerInfoPacket{
             info_map.insert(key, player_info);
         }
         let pack = PlayerInfoPacket { player_info_map: info_map };
-
         let data = Data::playerinfo{ packet: pack };
         data
     }
@@ -766,6 +544,7 @@ impl Buffer {
     }
 
     pub fn get_vec(&mut self, mut len: u8)-> Vec<usize> {
+
         let mut vec = Vec::new();
         while len > 0 {
             let value = self.read_bytes() as usize;
@@ -773,6 +552,66 @@ impl Buffer {
             len -= 1;
         }
         vec
+    }
+
+    pub fn write_f32 (&mut self, value: f32) {
+
+        let f32_byte_array = value.to_le_bytes();
+        for byte in f32_byte_array.iter() {
+            self.write_bytes(*byte);
+        }
+    }
+
+    pub fn read_f32 (&mut self) ->f32 {
+        let mut f32_byte_array = [0; F32_SIZE];
+        
+        for i in 0..F32_SIZE {
+            f32_byte_array[i] = self.read_bytes()
+        }
+        let value = f32::from_le_bytes(f32_byte_array);
+        value
+    }
+
+    pub fn write_i32 (&mut self, value: i32) {
+
+        let i32_byte_array = value.to_le_bytes();
+        for byte in i32_byte_array.iter() {
+            self.write_bytes(*byte);
+        }
+    }
+
+    pub fn read_i32 (&mut self) ->i32 {
+
+        let mut i32_byte_array = [0; I32_SIZE];
+        for i in 0..I32_SIZE {
+            i32_byte_array[i] = self.read_bytes()
+        }
+        let value = i32::from_le_bytes(i32_byte_array);
+        value
+    }
+    
+    pub fn write_string (&mut self, string: String) {
+        
+        let str_bytes_len = string.len() as u8;
+        self.write_bytes(str_bytes_len);
+
+        let str_byte_array = string.as_bytes();
+        for byte in str_byte_array.iter() {
+            self.write_bytes(*byte);
+        }
+    }
+
+    pub fn read_string (&mut self) -> String {
+        
+        let str_bytes_len = self.read_bytes() as usize;
+
+        let mut str_byte_vec = Vec::new();
+        for _ in 0..str_bytes_len {
+            let byte = self.read_bytes();
+            str_byte_vec.push(byte);
+        }
+        let string = String::from_utf8(str_byte_vec).unwrap();
+        string
     }
 }
 
