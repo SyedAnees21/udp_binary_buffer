@@ -97,7 +97,7 @@ pub struct DisconnectPacket;
 
 impl ReadWrite for DisconnectPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::DISCONNECT as u8);
+        buffer.write_byte(PacketType::DISCONNECT as u8);
     }
 
     fn read_from_buffer( _buffer: &mut Buffer)-> Data {
@@ -117,7 +117,7 @@ pub struct SpawnLaserPacket{
 
 impl ReadWrite for SpawnLaserPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::SPAWN_LASER as u8);
+        buffer.write_byte(PacketType::SPAWN_LASER as u8);
         buffer.write_f32(self.point.x);
         buffer.write_f32(self.point.y);
     }
@@ -141,12 +141,12 @@ pub struct MovementPacket {
 
 impl ReadWrite for MovementPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::MOVEMENT as u8);
-        buffer.write_bytes(self.in_type as u8)
+        buffer.write_byte(PacketType::MOVEMENT as u8);
+        buffer.write_byte(self.in_type as u8)
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let intype = match buffer.read_bytes(){
+        let intype = match buffer.read_byte(){
             2 => {InTypes::UP},
             3 => {InTypes::DOWN},
             4 => {InTypes::LEFT},
@@ -168,14 +168,14 @@ pub struct RotatePacket{
 
 impl ReadWrite for RotatePacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::ROTATE as u8);
-        buffer.write_bytes(self.in_type as u8);
+        buffer.write_byte(PacketType::ROTATE as u8);
+        buffer.write_byte(self.in_type as u8);
         buffer.write_f32(self.point.x);
         buffer.write_f32(self.point.y);
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let intype = match buffer.read_bytes(){
+        let intype = match buffer.read_byte(){
             0 => {InTypes::LEFT_CLICK},
             _ => {panic!("Invalid input received, expected mouse left click")}
         };
@@ -199,12 +199,12 @@ pub struct FirePacket {
 
 impl ReadWrite for FirePacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::FIRE as u8);
-        buffer.write_bytes(self.in_type as u8)
+        buffer.write_byte(PacketType::FIRE as u8);
+        buffer.write_byte(self.in_type as u8)
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let intype = match buffer.read_bytes(){
+        let intype = match buffer.read_byte(){
             1 => {InTypes::RIGHT_CLICK},
             _ => {panic!("Invalid input received, expected Mouse Right Click")}
         };
@@ -225,16 +225,16 @@ pub struct SpawnPlayerPacket{
 
 impl ReadWrite for SpawnPlayerPacket{
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::SPAWN_PLAYER as u8);
-        buffer.write_bytes(self.in_type as u8);
+        buffer.write_byte(PacketType::SPAWN_PLAYER as u8);
+        buffer.write_byte(self.in_type as u8);
         buffer.write_f32(self.point.x);
         buffer.write_f32(self.point.y);
-        buffer.write_bytes(self.fighter_type as u8);
+        buffer.write_byte(self.fighter_type as u8);
         buffer.write_string(self.player_name.to_owned());
     }
         
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let in_type = match buffer.read_bytes() {
+        let in_type = match buffer.read_byte() {
             0 => {InTypes::LEFT_CLICK},
             1 => {InTypes::RIGHT_CLICK},
             2 => {InTypes::UP},
@@ -247,7 +247,7 @@ impl ReadWrite for SpawnPlayerPacket{
 
         let x = buffer.read_f32();
         let y = buffer.read_f32();
-        let fightertype = buffer.read_bytes() as usize;
+        let fightertype = buffer.read_byte() as usize;
         let playername = buffer.read_string();
         
         let pack = SpawnPlayerPacket{
@@ -273,18 +273,18 @@ pub struct InitConnectPacket{
 
 impl ReadWrite for InitConnectPacket{
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::INIT_CONNECT as u8);
+        buffer.write_byte(PacketType::INIT_CONNECT as u8);
         buffer.write_string(self.name.to_owned());
-        buffer.write_bytes(self.unique_index as u8);
+        buffer.write_byte(self.unique_index as u8);
 
         let vec_bytes_len = self.other_players_indices.len() as u8;
-        buffer.write_bytes(vec_bytes_len);
+        buffer.write_byte(vec_bytes_len);
 
         for value in self.other_players_indices.iter(){
-            buffer.write_bytes(*value as u8);
+            buffer.write_byte(*value as u8);
         }
 
-        buffer.write_bytes(self.no_players as u8);
+        buffer.write_byte(self.no_players as u8);
         buffer.write_f32(self.arena_dim.x);
         buffer.write_f32(self.arena_dim.y);
         buffer.write_f32(self.dashboard_info.health);
@@ -294,10 +294,10 @@ impl ReadWrite for InitConnectPacket{
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
 
         let playername = buffer.read_string();
-        let uniq_index = buffer.read_bytes() as usize;
-        let vec_len = buffer.read_bytes();
+        let uniq_index = buffer.read_byte() as usize;
+        let vec_len = buffer.read_byte();
         let other_indices = buffer.get_vec(vec_len);
-        let num_of_players = buffer.read_bytes() as usize;
+        let num_of_players = buffer.read_byte() as usize;
         
         let x = buffer.read_f32();
         let y = buffer.read_f32();
@@ -328,7 +328,7 @@ pub struct DashboardinfoPacket {
 
 impl ReadWrite for DashboardinfoPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::DASHBOARD as u8);
+        buffer.write_byte(PacketType::DASHBOARD as u8);
         buffer.write_f32(self.dashboard_info.health);
         buffer.write_f32(self.dashboard_info.score);
     }
@@ -351,10 +351,10 @@ pub struct PlayerStatePacket { //TODO vec for players state
 
 impl ReadWrite for PlayerStatePacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::PLAYERSTATE as u8);
+        buffer.write_byte(PacketType::PLAYERSTATE as u8);
         
         let vec_len = self.player_states.len() as u8;
-        buffer.write_bytes(vec_len);
+        buffer.write_byte(vec_len);
 
         for player_state in self.player_states.iter() {
             buffer.write_i32(player_state.id);
@@ -366,7 +366,7 @@ impl ReadWrite for PlayerStatePacket {
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let vec_len = buffer.read_bytes() as usize;
+        let vec_len = buffer.read_byte() as usize;
         let mut players_state_vec = Vec::new();
 
         for _ in 0.. vec_len {
@@ -396,22 +396,22 @@ pub struct LaserPointsPacket {
 
 impl ReadWrite for LaserPointsPacket {
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::LASER_POINTS as u8);
+        buffer.write_byte(PacketType::LASER_POINTS as u8);
         
         let vec_len = self.laser_points.len() as u8;
-        buffer.write_bytes(vec_len); 
+        buffer.write_byte(vec_len); 
 
         for l_points in self.laser_points.iter() {
             buffer.write_f32(l_points.point.x);
             buffer.write_f32(l_points.point.y);
             buffer.write_f32(l_points.dir.x);
             buffer.write_f32(l_points.dir.y);
-            buffer.write_bytes(l_points.id as u8);
+            buffer.write_byte(l_points.id as u8);
         }
     }
 
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
-        let vec_len = buffer.read_bytes() as usize;
+        let vec_len = buffer.read_byte() as usize;
         let mut vec = Vec::new();
 
 
@@ -421,7 +421,7 @@ impl ReadWrite for LaserPointsPacket {
             let y1 = buffer.read_f32();
             let x2 = buffer.read_f32();
             let y2 = buffer.read_f32();
-            let id = buffer.read_bytes() as usize;
+            let id = buffer.read_byte() as usize;
 
             let l_points = LaserPoints {
                 point: Point2D { x: x1, y: y1 },
@@ -446,27 +446,27 @@ pub struct PlayerInfoPacket {
 
 impl ReadWrite for PlayerInfoPacket{
     fn write_to_buffer(&self, buffer: &mut Buffer) {
-        buffer.write_bytes(PacketType::PlayerInfo as u8);
+        buffer.write_byte(PacketType::PlayerInfo as u8);
         
         let map_len = self.player_info_map.len() as u8;
-        buffer.write_bytes(map_len);
+        buffer.write_byte(map_len);
 
         for player_info in self.player_info_map.iter() {
-            buffer.write_bytes(*player_info.0 as u8);
+            buffer.write_byte(*player_info.0 as u8);
             buffer.write_string(player_info.1.name.to_owned());        
-            buffer.write_bytes(player_info.1.fighter as u8);
+            buffer.write_byte(player_info.1.fighter as u8);
         }
     }
         
     fn read_from_buffer( buffer: &mut Buffer)-> Data {
 
         let mut info_map = HashMap::new();
-        let map_len = buffer.read_bytes() as usize;
+        let map_len = buffer.read_byte() as usize;
 
         for _ in 0..map_len {
-            let key = buffer.read_bytes() as usize;
+            let key = buffer.read_byte() as usize;
             let playername = buffer.read_string();
-            let fighter_type = buffer.read_bytes() as usize;
+            let fighter_type = buffer.read_byte() as usize;
 
             let player_info = PlayerInfo { name: playername.to_string() , fighter: fighter_type };
 
@@ -510,7 +510,7 @@ impl Buffer {
         self.index = 0;
     }
 
-    pub fn write_bytes(&mut self, value:u8) {
+    pub fn write_byte(&mut self, value:u8) {
         unsafe
         {
             assert!(self.index + 1 <= self.size);
@@ -520,7 +520,7 @@ impl Buffer {
         }
     }
 
-    pub fn read_bytes(&mut self) -> u8 {
+    pub fn read_byte(&mut self) -> u8 {
         unsafe
         {
             let ptr = self.ptr.add(self.index);
@@ -535,7 +535,7 @@ impl Buffer {
         let mut slice:[u8;200]=[0;200];
         let mut i = 0;
         while len > 0 {
-            let value = self.read_bytes();
+            let value = self.read_byte();
             slice[i] = value;
             i += 1;
             len -= 1;
@@ -547,7 +547,7 @@ impl Buffer {
 
         let mut vec = Vec::new();
         while len > 0 {
-            let value = self.read_bytes() as usize;
+            let value = self.read_byte() as usize;
             vec.push(value);
             len -= 1;
         }
@@ -558,7 +558,7 @@ impl Buffer {
 
         let f32_byte_array = value.to_le_bytes();
         for byte in f32_byte_array.iter() {
-            self.write_bytes(*byte);
+            self.write_byte(*byte);
         }
     }
 
@@ -566,7 +566,7 @@ impl Buffer {
         let mut f32_byte_array = [0; F32_SIZE];
         
         for i in 0..F32_SIZE {
-            f32_byte_array[i] = self.read_bytes()
+            f32_byte_array[i] = self.read_byte()
         }
         let value = f32::from_le_bytes(f32_byte_array);
         value
@@ -576,7 +576,7 @@ impl Buffer {
 
         let i32_byte_array = value.to_le_bytes();
         for byte in i32_byte_array.iter() {
-            self.write_bytes(*byte);
+            self.write_byte(*byte);
         }
     }
 
@@ -584,7 +584,7 @@ impl Buffer {
 
         let mut i32_byte_array = [0; I32_SIZE];
         for i in 0..I32_SIZE {
-            i32_byte_array[i] = self.read_bytes()
+            i32_byte_array[i] = self.read_byte()
         }
         let value = i32::from_le_bytes(i32_byte_array);
         value
@@ -593,21 +593,21 @@ impl Buffer {
     pub fn write_string (&mut self, string: String) {
         
         let str_bytes_len = string.len() as u8;
-        self.write_bytes(str_bytes_len);
+        self.write_byte(str_bytes_len);
 
         let str_byte_array = string.as_bytes();
         for byte in str_byte_array.iter() {
-            self.write_bytes(*byte);
+            self.write_byte(*byte);
         }
     }
 
     pub fn read_string (&mut self) -> String {
         
-        let str_bytes_len = self.read_bytes() as usize;
+        let str_bytes_len = self.read_byte() as usize;
 
         let mut str_byte_vec = Vec::new();
         for _ in 0..str_bytes_len {
-            let byte = self.read_bytes();
+            let byte = self.read_byte();
             str_byte_vec.push(byte);
         }
         let string = String::from_utf8(str_byte_vec).unwrap();
@@ -683,7 +683,7 @@ impl Packet {
     }
 
     pub fn packet_from_buffer(buffer: &mut Buffer) -> Option<Packet> {
-        let p_type = buffer.read_bytes();
+        let p_type = buffer.read_byte();
 
         match p_type {
             1 => {
