@@ -1,5 +1,6 @@
 use std::{net::UdpSocket, time::Duration, thread};
 use packet::*;
+use ::Buffer::*;
 
 fn main() {
     //Creating a new buffer

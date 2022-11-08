@@ -1,4 +1,13 @@
 [workspace]
 resolver = "2"
 
-members = ["client","server", "galactic_server", "galactic_client", "packet", "packet_test"]
+members = [
+    "client",
+    "server",
+    "galactic_server", 
+    "galactic_client", 
+    "packet", 
+    "Test", 
+    "Buffer", 
+    "Scratch"
+    ]

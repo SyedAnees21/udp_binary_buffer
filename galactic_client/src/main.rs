@@ -1,5 +1,6 @@
 use std::{net::UdpSocket};
 use packet::*;
+use ::Buffer::*;
 
 fn main() {
     let mut buffer = Buffer::new();

@@ -3,6 +3,8 @@ mod tests {
     use std::collections::HashMap;
 
     use packet::*;
+    use ::Buffer::*;
+
 
     #[test]
     fn movement_packet_test() {

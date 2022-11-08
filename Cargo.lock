@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "Buffer"
+version = "0.1.0"
+
+[[package]]
+name = "Scratch"
+version = "0.1.0"
+
+[[package]]
 name = "client"
 version = "0.1.0"
 
@@ -10,6 +18,7 @@ version = "0.1.0"
 name = "galactic_client"
 version = "0.1.0"
 dependencies = [
+ "Buffer",
  "packet",
 ]
 
@@ -17,17 +26,22 @@ dependencies = [
 name = "galactic_server"
 version = "0.1.0"
 dependencies = [
+ "Buffer",
  "packet",
 ]
 
 [[package]]
 name = "packet"
 version = "0.1.0"
+dependencies = [
+ "Buffer",
+]
 
 [[package]]
 name = "packet_test"
 version = "0.1.0"
 dependencies = [
+ "Buffer",
  "packet",
 ]
 
