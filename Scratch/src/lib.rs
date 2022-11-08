@@ -2,21 +2,19 @@
 const QUAT_COMPONENT_RANGE: (f32,f32) = (-0.70717,0.70717);
 const QUAT_PRECISION_BITS: u32 = 21;
 const QUAT_PRECISION_BITS_OFFSET: u64 = 32-QUAT_PRECISION_BITS as u64;
-const INDEX_BITS: u32 = 3; //actually 3 from 0..2
+const INDEX_BITS: u32 = 3;       //actually 3 from 0..2
 const QUAT_INDEX_BITS_OFFSET: u64 = 3*QUAT_PRECISION_BITS_OFFSET + BIT_OFFSET as u64;
 const BIT_OFFSET: u32 = 1;
-const COMPRESSED_QUAT_BITS: u64 = 60;
 
 pub fn quat_compression() {
     let mut quat: Vec<f32>= Vec::new();
 
-    quat.push(0.2);
-    quat.push(0.4);
-    quat.push(0.435);
     quat.push(0.5);
+    quat.push(0.4);
+    quat.push(0.632);
+    quat.push(0.435);
 
     println!("{:?}", quat.iter()); 
-    println!("Total size of original quat: {} bytes\n", 4*quat.len());
 
     let mut largest = 0.;
     let mut index = 0;
@@ -35,7 +33,6 @@ pub fn quat_compression() {
             index = value.0;
         }
     }
-    println!("largest quat component {largest} at index {index}\n");
     quat.remove(index);
 
     println!("Uncompressed: ");
@@ -48,7 +45,6 @@ pub fn quat_compression() {
         }
         print!("\n");
     }
-    println!("Total size after largest value dropped: {} bytes", 4*quat.len());
 
     let compressed = compress_quat(&quat, index);
 
@@ -59,9 +55,9 @@ pub fn quat_compression() {
         print!("{:b}", byte);    
     }
     print!("\n");
-    println!("Total size after quat compression: {} bytes", compressed_binary.len());
 
-    uncompress_quat(compressed);
+    let received_quat = uncompress_quat(compressed);
+    println!("\nreceived quaternion: {:?}", received_quat.iter()); 
 
 }
 
@@ -82,7 +78,7 @@ fn compress_quat(quaternion: &Vec<f32>, index: usize) -> u64 {
     double
 }
 
-fn uncompress_quat(mut double: u64) {
+fn uncompress_quat(double: u64) -> Vec<f32> {
     
     let mut upper_half: u32 = 0;
     let mut lower_half: u32 = 0;
@@ -90,6 +86,8 @@ fn uncompress_quat(mut double: u64) {
     let mut quat_comp2: u32 = 0;
     let mut quat_comp3: u32 = 0;
     let mut index: u32 = 0;
+
+    let mut quat = Vec::new();
 
     upper_half |= (double as u32 ) >> 0;
 
@@ -113,50 +111,98 @@ fn uncompress_quat(mut double: u64) {
     print!("\n");
     
     quat_comp1 |= upper_half << QUAT_PRECISION_BITS;
-    println!("{:b}", quat_comp1);
 
     upper_half &= !(quat_comp1 >> QUAT_PRECISION_BITS);
     upper_half = upper_half >> QUAT_PRECISION_BITS_OFFSET;
-    println!("{:b}", upper_half);
 
     quat_comp2 |= upper_half << QUAT_PRECISION_BITS;
-    println!("{:b}", quat_comp2);
 
     upper_half &= !(quat_comp1 >> QUAT_PRECISION_BITS);
     upper_half = upper_half >> QUAT_PRECISION_BITS_OFFSET;
-    println!("{:b}", upper_half);
 
     quat_comp3 |= lower_half << 31 | upper_half << QUAT_PRECISION_BITS;
-    println!("{:b}", quat_comp3);
     
     lower_half = lower_half >> 2;
-    println!("{:b}", lower_half);
 
     index |= lower_half;
-    println!("{}", index);
 
-    lower_half = lower_half >> INDEX_BITS;
-    println!("{:b}", lower_half);
+    if index == 0 {
+        let mut component_bytes = quat_comp1.to_be_bytes();
+        let y = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp2.to_be_bytes();
+        let z = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp3.to_be_bytes();
+        let w = f32::from_be_bytes(component_bytes);
+
+        let num = 1. - (w*w + y*y + z*z);
+        let x = num.sqrt();
+    
+        quat.push(x);
+        quat.push(y);
+        quat.push(z);
+        quat.push(w);
+    }
+
+    if index == 1 {
+        let mut component_bytes = quat_comp1.to_be_bytes();
+        let x = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp2.to_be_bytes();
+        let z = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp3.to_be_bytes();
+        let w = f32::from_be_bytes(component_bytes);
+
+        let num = 1. - (x*x + z*z + w*w);
+        let y = num.sqrt();
+    
+        quat.push(x);
+        quat.push(y);
+        quat.push(z);
+        quat.push(w);
+    }
+
+    if index == 2 {
+        let mut component_bytes = quat_comp1.to_be_bytes();
+        let x = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp2.to_be_bytes();
+        let y = f32::from_be_bytes(component_bytes);
+
+        component_bytes = quat_comp3.to_be_bytes();
+        let w = f32::from_be_bytes(component_bytes);
+
+        let num = 1. - (x*x + y*y + w*w);
+        let z = num.sqrt();
+    
+        quat.push(x);
+        quat.push(y);
+        quat.push(z);
+        quat.push(w);
+    }
 
     if index == 3 {
         let mut component_bytes = quat_comp1.to_be_bytes();
         let x = f32::from_be_bytes(component_bytes);
-        println!("{}",x);
 
         component_bytes = quat_comp2.to_be_bytes();
         let y = f32::from_be_bytes(component_bytes);
-        println!("{}",y);
 
         component_bytes = quat_comp3.to_be_bytes();
         let z = f32::from_be_bytes(component_bytes);
-        println!("{}",z);
 
         let num = 1. - (x*x + y*y + z*z);
         let w = num.sqrt();
-        println!("{}",w);
-
+    
+        quat.push(x);
+        quat.push(y);
+        quat.push(z);
+        quat.push(w);
     }
 
+    quat
 }
 
 #[cfg(test)]
